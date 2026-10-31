@@ -1,25 +1,14 @@
 # opencode-skill
 
-Kimi/Claude-style agent skill for [OpenCode](https://opencode.ai/) — AI-powered code generation and development.
+Agent skill for the [OpenCode](https://opencode.ai/) CLI — multi-step code generation in `<workspace>/projects/`.
 
-Covers:
+Procedure lives in `SKILL.md`: auth via `opencode auth login` or `{env:…}` (never plaintext API keys in JSON), `opencode models` for current ids, `--auto` for unattended runs, host notes for OpenClaw vs Cursor.
 
-- **Installation & provider config** (OpenRouter, Anthropic, env vars)
-- **Model selection** by task complexity (`--model` flag discipline)
-- **Subagent spawn pattern** — keep the main chat clean; subagent reads the skill first
-- **Direct execution pattern** — `pty: true`, timeouts, `yieldMs`
-- **Workflows** — new projects, editing existing codebases, file attachments
-- **Troubleshooting** — no output, hangs, auth issues, missing files
+Pairs with [mkstack-skill](https://github.com/NostrDanish/mkstack-skill) for Nostr client websites.
 
 ## Install
 
-Upload `SKILL.md` as a `.skill` package to your agent's skill library, or clone this repo into your skills directory.
-
-Pairs with the [mkstack skill](https://github.com/NostrDanish/mkstack-skill) for building Nostr client websites.
-
-## Source
-
-Extracted from the [openclaw-skills](https://github.com/NostrDanish/nostr-skills-registry) collection.
+Copy `SKILL.md` into your agent skill library.
 
 ## License
 
