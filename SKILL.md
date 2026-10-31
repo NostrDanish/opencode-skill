@@ -1,315 +1,83 @@
 ---
 name: opencode
-description: Use OpenCode for AI-powered code generation and development tasks. OpenCode can build and edit projects and write code across multiple languages. Use when you need to generate code, create web pages, build applications, update existing applications, or perform coding tasks that would take multiple iterations.
+description: "Run the OpenCode CLI to generate or edit a project from a prompt. Use for a new app, a multi-file feature, or a refactor that would take many edits. Do not use it for a one-file change you can make directly. Triggers on opencode, opencode run, and 'have OpenCode build this'."
 license: CC-BY-SA-4.0
 ---
 
-# OpenCode Skill
+# OpenCode
 
-Use OpenCode for AI-powered code generation and development tasks.
+OpenCode is a terminal coding agent. You drive it with `opencode run`. You do not reimplement it with your own edits unless it failed.
 
-## What is OpenCode?
+## Install and providers
 
-OpenCode is an AI coding assistant (similar to Cursor, Windsurf, etc.) that can:
-- Generate code and create files
-- Build complete projects (web pages, apps, etc.)
-- Edit existing code
-- Work with multiple programming languages
-- Execute code and iterate on results
-
-## When to Use
-
-Use OpenCode for:
-- **Creating new projects** (websites, apps, scripts)
-- **Editing existing codebases** (adding features, refactoring, fixing bugs)
-- **Generating code files**
-- **Building prototypes quickly**
-- **Code-heavy tasks** that would take multiple iterations
-
-**Don't use for:**
-- Simple file operations (use write/edit tools instead)
-- Tasks that don't involve coding
-- When you just need to read/analyze existing code
-
-## Installation
-
-Check if OpenCode is installed:
 ```bash
-which opencode
-```
-
-If not installed, install it:
-```bash
-# Install OpenCode
-curl -fsSL https://opencode.ai/install | bash
-
-# Create symlink to make it accessible in PATH
-ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
-
-# Verify installation
+command -v opencode || curl -fsSL https://opencode.ai/install | bash
 opencode --version
 ```
 
-## Configuration
+The installer is the upstream script at `opencode.ai`. Do not run a copy from anywhere else.
 
-### 1. Provider Setup
-
-Configure OpenRouter (or another provider):
+API keys stay in the environment. The config file references them. It does not contain them.
 
 ```bash
-# Create config file
 mkdir -p ~/.config/opencode
-cat > ~/.config/opencode/opencode.json << 'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "openrouter": {
-      "options": {
-        "apiKey": "sk-or-v1-YOUR_API_KEY_HERE"
-      }
-    }
-  }
-}
-EOF
 ```
 
-**For the skill:** When a user wants to configure a provider:
-1. Ask for the API key
-2. Create or update `~/.config/opencode/opencode.json`
-3. Verify with `opencode models <provider>`
-
-Alternative: Use environment variables instead of config file:
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-YOUR_KEY"
-export ANTHROPIC_API_KEY="sk-ant-YOUR_KEY"
-```
-
-### 2. Model Selection
-
-**Before running OpenCode**, ask which model to use unless the user has a known preference.
-
-Check available models:
-```bash
-opencode models openrouter
-```
-
-**Suggested models by task complexity:**
-- **Complex coding tasks**: `openrouter/anthropic/claude-sonnet-4.5`
-- **Simple tasks**: `openrouter/anthropic/claude-haiku-4.5`
-- **OpenAI models**: `openrouter/openai/gpt-4o`
-
-Always specify the model with `--model` flag.
-
-## Usage Pattern
-
-### Recommended Approach: Spawn Subagent
-
-For most OpenCode tasks, **spawn a subagent** to keep the main chat clean:
-
-```
-sessions_spawn:
-  task: "Read the opencode skill, then use OpenCode to create a landing page with contact form at <workspace>/projects/coffee-shop"
-  label: "opencode-landing-page"
-  runTimeoutSeconds: 660
-```
-
-**IMPORTANT**: Always tell the subagent to read the opencode skill first. Subagents don't inherit skill knowledge from the main session and will use incorrect syntax if they don't read the skill docs. CRITICAL: The subagent MUST read the opencode skill completely before attempting to use OpenCode. Always include the model to use in the spawn task.
-
-The subagent should:
-1. **Read the opencode skill** to get correct syntax
-2. Create project directory in workspace (e.g., `<workspace>/projects/project-name`) — **not home directory**
-3. Run OpenCode with appropriate settings
-4. Report results back to main session
-
-**Project Directory Rule**: Always create projects in `<workspace>/projects/` (inside your workspace directory, not the home directory). If `<workspace>/projects/` doesn't exist yet, create it first with `mkdir -p <workspace>/projects`.
-
-**For editing existing projects:**
-```
-sessions_spawn:
-  task: "Read the opencode skill, then use OpenCode to add authentication to the project at <workspace>/projects/my-app"
-  label: "opencode-add-auth"
-  runTimeoutSeconds: 660
-```
-
-### Direct Execution Pattern
-
-When running OpenCode in a subagent (or directly):
-
-```bash
-exec:
-  command: >
-    cd /path/to/project &&
-    opencode run --model openrouter/anthropic/claude-sonnet-4.5 "Task description"
-  pty: true
-  timeout: 600
-  yieldMs: 600000
-```
-
-**Key parameters:**
-- `pty: true` - **Required** to see streaming output
-- `timeout: 600` - 10 minutes (adjust based on complexity)
-- `yieldMs: 600000` - Block until completion (matches timeout in ms)
-- `--model` - Always specify the model
-
-**Important**: Without `pty: true`, you won't see OpenCode's output. The process will still work and create files, but you'll have no visibility into progress.
-
-### Checking Results
-
-After OpenCode completes, check what was created:
-
-```bash
-# List files
-ls -la /path/to/project/
-
-# Read key files
-cat /path/to/project/index.html
-
-# Report results
-# Mention what files were created and their purpose
-```
-
-## Common Workflows
-
-### Create a New Project
-
-```bash
-# Create directory in workspace (NOT in home directory ~)
-mkdir -p <workspace>/projects/my-project
-cd <workspace>/projects/my-project
-
-# Run OpenCode
-opencode run --model openrouter/anthropic/claude-sonnet-4.5 \
-  "Create a landing page for a coffee shop with menu, about section, and contact form. Use modern CSS, make it mobile responsive."
-```
-
-**Important**: Always create projects in `<workspace>/projects/`, not in the home directory (`~` or `~/projects/`). If the projects directory doesn't exist, create it first with `mkdir -p <workspace>/projects`.
-
-### Edit an Existing Project
-
-OpenCode works great for editing existing codebases:
-
-```bash
-# Navigate to existing project
-cd <workspace>/projects/my-website
-
-# Let OpenCode analyze and extend
-opencode run --model openrouter/anthropic/claude-sonnet-4.5 \
-  "Add a dark mode toggle to this website"
-```
-
-OpenCode will:
-1. Automatically analyze existing files in the directory
-2. Understand the project structure
-3. Make changes that fit the existing codebase
-4. Preserve your existing code while adding new features
-
-### File Attachments
-
-Attach specific files for context:
-
-```bash
-opencode run --model openrouter/anthropic/claude-sonnet-4.5 \
-  --file design.png \
-  "Create a landing page matching this design"
-```
-
-## Output Handling
-
-### What to Expect
-
-OpenCode streams output character-by-character (with `pty: true`):
-- Progress indicators (e.g., "| Write path/to/file")
-- Status messages
-- Questions (rare, usually just proceeds)
-- Completion confirmation
-
-### Parsing Results
-
-After execution, OpenCode will have:
-- Created/modified files in the project directory
-- Provided a summary of what was done
-
-Report to the user:
-- What files were created/modified
-- Brief description of the result
-- Location of the project
-- Any next steps (e.g., "Open index.html in a browser")
-
-## Configuration Options
-
-See [OpenCode Config Docs](https://opencode.ai/docs/config/) for full reference.
-
-Common config options in `~/.config/opencode/opencode.json`:
+`~/.config/opencode/opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/anthropic/claude-sonnet-4.5",
   "provider": {
     "openrouter": {
-      "options": {
-        "apiKey": "{env:OPENROUTER_API_KEY}"
-      }
+      "options": { "apiKey": "{env:OPENROUTER_API_KEY}" }
     }
-  },
-  "tools": {
-    "write": true,
-    "bash": true
-  },
-  "permission": {
-    "edit": "auto",
-    "bash": "ask"
   }
 }
 ```
 
-**Variable substitution:**
-- `{env:VAR_NAME}` - Load from environment variable
-- `{file:path}` - Load from file
+`{env:NAME}` and `{file:path}` are the substitutions OpenCode documents. Export `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` in the environment. Never write a key into the json, never echo it, never commit it.
 
-## Troubleshooting
+Check that the provider actually loaded:
 
-### No Output Visible
+```bash
+opencode auth list
+opencode models <provider>
+```
 
-**Problem**: Process runs but you see no output  
-**Solution**: Add `pty: true` to exec parameters
+## Model
 
-### Process Hangs
+Pass `--model` every time. If the user named one, use that. If they did not, run `opencode models` and pick a current Claude Sonnet (or whatever they already use for hard edits) from that list. Do not invent a model id. Model ids in old notes, including `claude-sonnet-4.5`, go stale.
 
-**Problem**: OpenCode runs for 10+ minutes with no files created  
-**Solution**: 
-- Check API key is configured correctly
-- Verify model is accessible: `opencode models <provider>`
-- Try a simpler task first to test setup
+## Run
 
-### Authentication Issues
+From the project directory, in a PTY, with a long wait. A multi-file app often needs several minutes. Ten minutes is a reasonable default; raise it if the prompt is large.
 
-**Problem**: "No provider configured" or authentication errors  
-**Solution**:
-- Check `~/.config/opencode/opencode.json` exists
-- Run `opencode auth list` to see configured providers
-- Verify API key is valid
+```bash
+cd <workspace>/projects/<project-name>
+opencode run --model <provider/model> "<task>"
+```
 
-### Files Not Created
+Create the directory first (`mkdir -p <workspace>/projects`). Do not use the home directory.
 
-**Problem**: OpenCode completes but no files in directory  
-**Solution**:
-- Check you're in the right directory
-- Look for error messages in output
-- Try with `--format json` to see structured output
+OpenCode needs a PTY to stream its progress. In Cursor, run it in the terminal. On OpenClaw or Hermes `exec`, set `pty: true`, `timeout: 600`, and `yieldMs: 600000`. Without a PTY it may still write files and show you nothing.
 
-## Tips
+A subagent is optional. If you use one, the subagent must read this skill first. `sessions_spawn` exists only on OpenClaw-style runtimes.
 
-1. **Be specific in prompts** - Include details about tech stack, styling, features
-2. **Start simple** - Test setup with simple tasks before complex projects
-3. **Use subagents** - Keep main chat clean, let subagents handle the work
-4. **Check models** - More capable models cost more but produce better results
-5. **Project context** - OpenCode works better when run from project directory
-6. **Timeouts** - Complex tasks may need 10-15 minutes, adjust timeout accordingly
+Attach a file with `--file` when the prompt depends on one image or spec:
 
-## Reference
+```bash
+opencode run --model <provider/model> --file design.png "Match this layout"
+```
 
-- **Docs**: https://opencode.ai/docs
-- **CLI Reference**: https://opencode.ai/docs/cli/
-- **Config Schema**: https://opencode.ai/config.json
-- **Models**: Run `opencode models` to see available models
+## After it exits
+
+Look at the files, do not trust the summary alone. Run the project's test or dev command. Report which files changed and where the project is.
+
+If it exits with no files: you are probably in the wrong directory, the key is missing (`opencode auth list`), or the model id is not in `opencode models`. Retry once with a shorter prompt before changing the project by hand.
+
+## When not to use it
+
+A single file edit, a rename, or reading code. Do those yourself. OpenCode is for work that would otherwise be a long series of edits.
+
+Docs: https://opencode.ai/docs and https://opencode.ai/docs/cli/
