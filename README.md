@@ -2,14 +2,14 @@
 
 Kimi/Claude-style agent skill for [OpenCode](https://opencode.ai/) — AI-powered code generation and development.
 
-Covers:
+The procedure is the current CLI (`opencode run`), not a frozen model id.
 
-- **Installation & provider config** (OpenRouter, Anthropic, env vars)
-- **Model selection** by task complexity (`--model` flag discipline)
-- **Subagent spawn pattern** — keep the main chat clean; subagent reads the skill first
-- **Direct execution pattern** — `pty: true`, timeouts, `yieldMs`
-- **Workflows** — new projects, editing existing codebases, file attachments
-- **Troubleshooting** — no output, hangs, auth issues, missing files
+- Install from https://opencode.ai/v2/install or `npm install -g @opencode/cli`
+- Pick a model with `opencode models`. Do not reuse ids from old copies of this skill.
+- From an agent, `--auto` is what stops the run from waiting on a permission prompt. Do not pass it unless the user asked for the files to be written.
+- Keys stay in the environment or `opencode auth login`. Do not write them into the repo.
+
+OpenClaw's `pty: true` / `sessions_spawn` notes are a harness appendix. Any other agent runs the CLI directly.
 
 ## Install
 
